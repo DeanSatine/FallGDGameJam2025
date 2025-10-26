@@ -7,6 +7,11 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private int maxHealth = 5;
     [SerializeField] private int currentHealth = 5;
 
+    [Header("Damage Effects")]
+    [SerializeField] private CameraController cameraController;
+    [SerializeField] private float damageShakeDuration = 0.3f;
+    [SerializeField] private float damageShakeMagnitude = 0.15f;
+
     [Header("Events")]
     public UnityEvent<int> OnHealthChanged;
     public UnityEvent OnPlayerDeath;
@@ -15,6 +20,11 @@ public class PlayerHealth : MonoBehaviour
     {
         currentHealth = maxHealth;
         OnHealthChanged?.Invoke(currentHealth);
+
+        if (cameraController == null)
+        {
+            cameraController = FindFirstObjectByType<CameraController>();
+        }
     }
 
     public void TakeDamage(int damage)
@@ -23,6 +33,12 @@ public class PlayerHealth : MonoBehaviour
         currentHealth = Mathf.Max(currentHealth, 0);
 
         OnHealthChanged?.Invoke(currentHealth);
+
+        if (cameraController != null)
+        {
+            cameraController.TriggerShake(damageShakeDuration, damageShakeMagnitude);
+            cameraController.TriggerDamageFOV(0.2f);
+        }
 
         if (currentHealth <= 0)
         {
