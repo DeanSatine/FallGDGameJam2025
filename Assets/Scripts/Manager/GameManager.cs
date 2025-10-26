@@ -93,14 +93,18 @@ public class GameManager : MonoBehaviour
 
     public void OnEnemyKilled(int pointValue)
     {
-        if (!isRoundActive) return;
-
+        Debug.Log($"GameManager: Enemy killed! Adding {pointValue} points. Current points: {currentPoints}");
+        
         currentPoints += pointValue;
-        enemiesKilledThisRound++;
+
+        if (isRoundActive)
+        {
+            enemiesKilledThisRound++;
+        }
 
         UpdateUI();
 
-        if (enemiesKilledThisRound >= enemiesToKillThisRound)
+        if (isRoundActive && enemiesKilledThisRound >= enemiesToKillThisRound)
         {
             EndRound();
         }
@@ -114,8 +118,6 @@ public class GameManager : MonoBehaviour
         {
             enemySpawner.StopSpawning();
         }
-
-        ClearRemainingEnemies();
 
         if (playerHealth != null)
         {
@@ -184,27 +186,10 @@ public class GameManager : MonoBehaviour
             enemySpawner.StopSpawning();
         }
 
-        ClearRemainingEnemies();
-
         if (uiManager != null)
         {
             string reason = fromDeath ? "Health reached 0!" : "Could not pay rent!";
             uiManager.ShowGameOver(currentRound, currentPoints, reason);
-        }
-    }
-
-    private void ClearRemainingEnemies()
-    {
-        Enemy[] enemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
-        foreach (Enemy enemy in enemies)
-        {
-            Destroy(enemy.gameObject);
-        }
-
-        EnemyProjectile[] projectiles = FindObjectsByType<EnemyProjectile>(FindObjectsSortMode.None);
-        foreach (EnemyProjectile projectile in projectiles)
-        {
-            Destroy(projectile.gameObject);
         }
     }
 

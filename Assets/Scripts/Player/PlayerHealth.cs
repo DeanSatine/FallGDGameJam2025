@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.UI;
+using System.Collections;
 
 public class PlayerHealth : MonoBehaviour
 {
@@ -11,10 +13,17 @@ public class PlayerHealth : MonoBehaviour
     [SerializeField] private CameraController cameraController;
     [SerializeField] private float damageShakeDuration = 0.3f;
     [SerializeField] private float damageShakeMagnitude = 0.15f;
+    
+    [Header("Damage Flash")]
+    [SerializeField] private Image damageFlashImage;
+    [SerializeField] private float flashDuration = 0.2f;
+    [SerializeField] private Color flashColor = new Color(1f, 0f, 0f, 0.3f);
 
     [Header("Events")]
     public UnityEvent<int> OnHealthChanged;
     public UnityEvent OnPlayerDeath;
+
+    private Coroutine flashCoroutine;
 
     private void Start()
     {
@@ -25,13 +34,24 @@ public class PlayerHealth : MonoBehaviour
         {
             cameraController = FindFirstObjectByType<CameraController>();
         }
+
+        if (damageFlashImage != null)
+        {
+            Color transparent = flashColor;
+            transparent.a = 0f;
+            damageFlashImage.color = transparent;
+        }
     }
 
     public void TakeDamage(int damage)
     {
+        Debug.Log($"PlayerHealth: Taking {damage} damage. Current health: {currentHealth}");
+        
         currentHealth -= damage;
         currentHealth = Mathf.Max(currentHealth, 0);
 
+        Debug.Log($"PlayerHealth: New health: {currentHealth}");
+        
         OnHealthChanged?.Invoke(currentHealth);
 
         if (cameraController != null)
@@ -40,10 +60,39 @@ public class PlayerHealth : MonoBehaviour
             cameraController.TriggerDamageFOV(0.2f);
         }
 
+        if (damageFlashImage != null)
+        {
+            if (flashCoroutine != null)
+            {
+                StopCoroutine(flashCoroutine);
+            }
+            flashCoroutine = StartCoroutine(FlashDamage());
+        }
+
         if (currentHealth <= 0)
         {
             Die();
         }
+    }
+
+    private IEnumerator FlashDamage()
+    {
+        damageFlashImage.color = flashColor;
+        
+        float elapsedTime = 0f;
+        while (elapsedTime < flashDuration)
+        {
+            elapsedTime += Time.deltaTime;
+            float alpha = Mathf.Lerp(flashColor.a, 0f, elapsedTime / flashDuration);
+            Color currentColor = flashColor;
+            currentColor.a = alpha;
+            damageFlashImage.color = currentColor;
+            yield return null;
+        }
+
+        Color transparent = flashColor;
+        transparent.a = 0f;
+        damageFlashImage.color = transparent;
     }
 
     public void Heal(int amount)

@@ -53,7 +53,6 @@ public abstract class Enemy : MonoBehaviour
             {
                 playerHealth.TakeDamage(damageToPlayer);
             }
-            Die();
         }
     }
 }

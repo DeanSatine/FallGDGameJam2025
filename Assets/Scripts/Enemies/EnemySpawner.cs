@@ -16,6 +16,7 @@ public class EnemySpawner : MonoBehaviour
     private Bounds spawnArea;
     private Coroutine spawnCoroutine;
     private int totalSpawned = 0;
+    private int enemiesToSpawn = 0;
 
     private void Start()
     {
@@ -43,8 +44,9 @@ public class EnemySpawner : MonoBehaviour
 
         isSpawning = true;
         totalSpawned = 0;
+        enemiesToSpawn = enemyCount;
 
-        if (debugMode) Debug.Log($"EnemySpawner: Starting spawning for round {round}");
+        if (debugMode) Debug.Log($"EnemySpawner: Starting spawning for round {round}, will spawn {enemyCount} enemies");
 
         spawnCoroutine = StartCoroutine(SpawnEnemies());
     }
@@ -64,9 +66,9 @@ public class EnemySpawner : MonoBehaviour
 
     private IEnumerator SpawnEnemies()
     {
-        if (debugMode) Debug.Log("EnemySpawner: SpawnEnemies coroutine started");
+        if (debugMode) Debug.Log($"EnemySpawner: SpawnEnemies coroutine started, spawning {enemiesToSpawn} enemies");
 
-        while (isSpawning)
+        while (isSpawning && totalSpawned < enemiesToSpawn)
         {
             yield return new WaitForSeconds(spawnInterval);
 
@@ -74,6 +76,12 @@ public class EnemySpawner : MonoBehaviour
             {
                 if (debugMode) Debug.Log("EnemySpawner: isSpawning became false, exiting coroutine");
                 yield break;
+            }
+
+            if (totalSpawned >= enemiesToSpawn)
+            {
+                if (debugMode) Debug.Log($"EnemySpawner: Reached spawn limit ({enemiesToSpawn}), stopping");
+                break;
             }
 
             if (lungerPrefab != null)
@@ -86,7 +94,8 @@ public class EnemySpawner : MonoBehaviour
             }
         }
 
-        if (debugMode) Debug.Log("EnemySpawner: SpawnEnemies coroutine ended naturally");
+        isSpawning = false;
+        if (debugMode) Debug.Log($"EnemySpawner: Finished spawning. Total spawned: {totalSpawned}/{enemiesToSpawn}");
     }
 
     private void SpawnEnemy(GameObject enemyPrefab)

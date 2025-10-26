@@ -40,6 +40,12 @@ public class UIManager : MonoBehaviour
         gameManager = FindFirstObjectByType<GameManager>();
         playerHealth = FindFirstObjectByType<PlayerHealth>();
 
+        if (playerHealth != null)
+        {
+            playerHealth.OnHealthChanged.AddListener(UpdateHealthDisplay);
+            UpdateHealthDisplay(playerHealth.GetCurrentHealth());
+        }
+
         if (dayStartPanel != null) dayStartPanel.SetActive(false);
         if (dayEndPanel != null) dayEndPanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
@@ -47,6 +53,14 @@ public class UIManager : MonoBehaviour
 
         if (dayStartFadeImage != null) dayStartFadeImage.color = new Color(0, 0, 0, 0);
         if (dayEndFadeImage != null) dayEndFadeImage.color = new Color(0, 0, 0, 0);
+    }
+
+    private void UpdateHealthDisplay(int health)
+    {
+        if (healthText != null)
+        {
+            healthText.text = $"Health: {health}";
+        }
     }
 
     public void UpdateGameStats(int points, int round, int enemiesKilled, int enemiesToKill)
