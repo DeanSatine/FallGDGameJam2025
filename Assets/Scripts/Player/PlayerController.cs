@@ -22,6 +22,17 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float throwForce = 15f;
     [SerializeField] private int sandwichDamage = 1;
     [SerializeField] private float sandwichCreationTime = 0.5f;
+    [SerializeField] private int currentSandwiches = 0;
+    [SerializeField] private int maxSandwiches = 999;
+
+    [Header("Aim Settings")]
+    [SerializeField] private float normalFOV = 60f;
+    [SerializeField] private float aimFOV = 40f;
+    [SerializeField] private float aimSpeed = 10f;
+
+    [Header("Interaction Settings")]
+    [SerializeField] private float interactionRange = 3f;
+    [SerializeField] private LayerMask interactionLayer = -1;
 
     [Header("VFX Settings")]
     [SerializeField] private GameObject throwVFXPrefab;
@@ -41,6 +52,7 @@ public class PlayerController : MonoBehaviour
     [Header("Camera References")]
     [SerializeField] private Transform cameraTransform;
     [SerializeField] private CameraController cameraController;
+    [SerializeField] private Camera mainCamera;
 
     private Rigidbody rb;
     private AudioSource audioSource;
@@ -49,6 +61,7 @@ public class PlayerController : MonoBehaviour
     private GameObject heldSandwich;
     private float verticalRotation = 0f;
     private bool isCreatingSandwich = false;
+    private bool isAiming = false;
 
     private float bobTimer = 0f;
     private Vector3 cameraStartPosition;
@@ -56,6 +69,9 @@ public class PlayerController : MonoBehaviour
     private int lastFootstepIndex = -1;
 
     private PlayerInputActions inputActions;
+    private Interactable currentInteractable;
+    private RentStation currentRentStation;
+    private UIManager uiManager;
 
     private void Awake()
     {
@@ -69,6 +85,17 @@ public class PlayerController : MonoBehaviour
         if (cameraTransform == null && Camera.main != null)
         {
             cameraTransform = Camera.main.transform;
+            mainCamera = Camera.main;
+        }
+
+        if (mainCamera == null && cameraTransform != null)
+        {
+            mainCamera = cameraTransform.GetComponent<Camera>();
+        }
+
+        if (mainCamera != null)
+        {
+            normalFOV = mainCamera.fieldOfView;
         }
 
         if (cameraController == null && cameraTransform != null)
@@ -80,6 +107,8 @@ public class PlayerController : MonoBehaviour
         {
             cameraStartPosition = cameraTransform.localPosition;
         }
+
+        uiManager = FindFirstObjectByType<UIManager>();
 
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
@@ -93,6 +122,8 @@ public class PlayerController : MonoBehaviour
         inputActions.Gameplay.Move.canceled += OnMoveCanceled;
         inputActions.Gameplay.CreateSandwich.performed += OnCreateSandwich;
         inputActions.Gameplay.Throw.performed += OnThrowSandwich;
+        inputActions.Gameplay.Aim.performed += OnAimPerformed;
+        inputActions.Gameplay.Aim.canceled += OnAimCanceled;
     }
 
     private void OnDisable()
@@ -101,6 +132,8 @@ public class PlayerController : MonoBehaviour
         inputActions.Gameplay.Move.canceled -= OnMoveCanceled;
         inputActions.Gameplay.CreateSandwich.performed -= OnCreateSandwich;
         inputActions.Gameplay.Throw.performed -= OnThrowSandwich;
+        inputActions.Gameplay.Aim.performed -= OnAimPerformed;
+        inputActions.Gameplay.Aim.canceled -= OnAimCanceled;
 
         inputActions.Gameplay.Disable();
     }
@@ -110,6 +143,8 @@ public class PlayerController : MonoBehaviour
         HandleMouseLook();
         HandleHeadBob();
         HandleFootstepSounds();
+        CheckForInteractable();
+        HandleAimZoom();
     }
 
     private void FixedUpdate()
@@ -125,6 +160,24 @@ public class PlayerController : MonoBehaviour
     private void OnMoveCanceled(InputAction.CallbackContext context)
     {
         moveInput = Vector2.zero;
+    }
+
+    private void OnAimPerformed(InputAction.CallbackContext context)
+    {
+        isAiming = true;
+    }
+
+    private void OnAimCanceled(InputAction.CallbackContext context)
+    {
+        isAiming = false;
+    }
+
+    private void HandleAimZoom()
+    {
+        if (mainCamera == null) return;
+
+        float targetFOV = isAiming ? aimFOV : normalFOV;
+        mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, targetFOV, aimSpeed * Time.deltaTime);
     }
 
     private void HandleMouseLook()
@@ -220,11 +273,71 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private void CheckForInteractable()
+    {
+        if (cameraTransform == null) return;
+
+        Ray ray = new Ray(cameraTransform.position, cameraTransform.forward);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, interactionRange, interactionLayer))
+        {
+            Interactable interactable = hit.collider.GetComponent<Interactable>();
+            if (interactable != null)
+            {
+                if (currentInteractable != interactable)
+                {
+                    currentInteractable = interactable;
+                    currentRentStation = null;
+                    if (uiManager != null)
+                    {
+                        uiManager.ShowInteractionPrompt(interactable.GetInteractionPrompt());
+                    }
+                }
+                return;
+            }
+
+            RentStation rentStation = hit.collider.GetComponent<RentStation>();
+            if (rentStation != null)
+            {
+                if (currentRentStation != rentStation)
+                {
+                    currentRentStation = rentStation;
+                    currentInteractable = null;
+                    if (uiManager != null)
+                    {
+                        uiManager.ShowInteractionPrompt(rentStation.GetInteractionPrompt());
+                    }
+                }
+                return;
+            }
+        }
+
+        if (currentInteractable != null || currentRentStation != null)
+        {
+            currentInteractable = null;
+            currentRentStation = null;
+            if (uiManager != null)
+            {
+                uiManager.HideInteractionPrompt();
+            }
+        }
+    }
+
     private void OnCreateSandwich(InputAction.CallbackContext context)
     {
-        if (heldSandwich == null && sandwichPrefab != null && !isCreatingSandwich)
+        if (!context.performed) return;
+
+        if (currentInteractable != null)
         {
-            StartCoroutine(CreateSandwichCoroutine());
+            currentInteractable.Interact(this);
+            return;
+        }
+
+        if (currentRentStation != null)
+        {
+            currentRentStation.Interact(this);
+            return;
         }
     }
 
@@ -278,27 +391,30 @@ public class PlayerController : MonoBehaviour
 
     private void ThrowSandwich()
     {
+        if (currentSandwiches <= 0) return;
+
         Vector3 throwPosition = heldSandwich.transform.position;
 
-        heldSandwich.transform.SetParent(null);
+        GameObject thrownSandwich = heldSandwich;
+        thrownSandwich.transform.SetParent(null);
 
-        Collider sandwichCollider = heldSandwich.GetComponent<Collider>();
+        Collider sandwichCollider = thrownSandwich.GetComponent<Collider>();
         if (sandwichCollider != null)
         {
             sandwichCollider.enabled = true;
         }
 
-        Rigidbody sandwichRb = heldSandwich.GetComponent<Rigidbody>();
+        Rigidbody sandwichRb = thrownSandwich.GetComponent<Rigidbody>();
         if (sandwichRb != null)
         {
             sandwichRb.isKinematic = false;
             sandwichRb.linearVelocity = cameraTransform.forward * throwForce;
         }
 
-        SandwichProjectile projectile = heldSandwich.GetComponent<SandwichProjectile>();
+        SandwichProjectile projectile = thrownSandwich.GetComponent<SandwichProjectile>();
         if (projectile == null)
         {
-            projectile = heldSandwich.AddComponent<SandwichProjectile>();
+            projectile = thrownSandwich.AddComponent<SandwichProjectile>();
         }
         projectile.damage = sandwichDamage;
         projectile.explosionVFXPrefab = explosionVFXPrefab;
@@ -320,7 +436,44 @@ public class PlayerController : MonoBehaviour
             cameraController.TriggerShake(throwShakeDuration, throwShakeMagnitude);
         }
 
-        heldSandwich = null;
+        currentSandwiches--;
+        
+        if (uiManager != null)
+        {
+            uiManager.UpdateSandwichCount(currentSandwiches);
+        }
+
+        if (currentSandwiches > 0)
+        {
+            StartCoroutine(CreateSandwichCoroutine());
+        }
+        else
+        {
+            heldSandwich = null;
+        }
+    }
+
+    public void AddSandwiches(int amount)
+    {
+        currentSandwiches += amount;
+        
+        if (uiManager != null)
+        {
+            uiManager.UpdateSandwichCount(currentSandwiches);
+        }
+    }
+
+    public void CreateSandwichInHand()
+    {
+        if (heldSandwich == null && sandwichPrefab != null)
+        {
+            CreateSandwich();
+        }
+    }
+
+    public int GetCurrentSandwiches()
+    {
+        return currentSandwiches;
     }
 
     private void OnDestroy()

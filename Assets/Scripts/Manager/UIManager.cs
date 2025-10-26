@@ -1,5 +1,7 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
+using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
@@ -8,13 +10,23 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI roundText;
     [SerializeField] private TextMeshProUGUI enemiesText;
     [SerializeField] private TextMeshProUGUI healthText;
+    [SerializeField] private TextMeshProUGUI sandwichCountText;
+
+    [Header("Interaction")]
+    [SerializeField] private GameObject interactionPromptPanel;
+    [SerializeField] private TextMeshProUGUI interactionPromptText;
 
     [Header("Day Panels")]
     [SerializeField] private GameObject dayStartPanel;
     [SerializeField] private TextMeshProUGUI dayStartText;
+    [SerializeField] private Image dayStartFadeImage;
     [SerializeField] private GameObject dayEndPanel;
     [SerializeField] private TextMeshProUGUI dayEndText;
     [SerializeField] private TextMeshProUGUI rentCostText;
+    [SerializeField] private Image dayEndFadeImage;
+
+    [Header("Fade Settings")]
+    [SerializeField] private float fadeDuration = 1f;
 
     [Header("Game Over Panel")]
     [SerializeField] private GameObject gameOverPanel;
@@ -31,6 +43,10 @@ public class UIManager : MonoBehaviour
         if (dayStartPanel != null) dayStartPanel.SetActive(false);
         if (dayEndPanel != null) dayEndPanel.SetActive(false);
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
+        if (interactionPromptPanel != null) interactionPromptPanel.SetActive(false);
+
+        if (dayStartFadeImage != null) dayStartFadeImage.color = new Color(0, 0, 0, 0);
+        if (dayEndFadeImage != null) dayEndFadeImage.color = new Color(0, 0, 0, 0);
     }
 
     public void UpdateGameStats(int points, int round, int enemiesKilled, int enemiesToKill)
@@ -61,16 +77,37 @@ public class UIManager : MonoBehaviour
         if (dayStartPanel != null && dayStartText != null)
         {
             dayStartText.text = $"Day {day}";
-            dayStartPanel.SetActive(true);
-            Invoke(nameof(HideDayStart), 2f);
+            StartCoroutine(ShowDayStartWithFade(day));
+        }
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayDayStartJingle();
         }
     }
 
-    private void HideDayStart()
+    private IEnumerator ShowDayStartWithFade(int day)
     {
+        if (dayStartFadeImage != null)
+        {
+            yield return StartCoroutine(FadeImage(dayStartFadeImage, 0f, 1f, fadeDuration));
+        }
+
+        if (dayStartPanel != null)
+        {
+            dayStartPanel.SetActive(true);
+        }
+
+        yield return new WaitForSeconds(2f);
+
         if (dayStartPanel != null)
         {
             dayStartPanel.SetActive(false);
+        }
+
+        if (dayStartFadeImage != null)
+        {
+            yield return StartCoroutine(FadeImage(dayStartFadeImage, 1f, 0f, fadeDuration));
         }
     }
 
@@ -104,6 +141,11 @@ public class UIManager : MonoBehaviour
             gameOverText.text = $"Game Over!\n{reason}\n\nFinal Day: {finalRound}\nFinal Points: {finalPoints}";
             gameOverPanel.SetActive(true);
         }
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameOverJingle();
+        }
     }
 
     public void OnRestartButtonClicked()
@@ -112,5 +154,46 @@ public class UIManager : MonoBehaviour
         {
             gameManager.RestartGame();
         }
+    }
+
+    public void ShowInteractionPrompt(string prompt)
+    {
+        if (interactionPromptPanel != null && interactionPromptText != null)
+        {
+            interactionPromptText.text = prompt;
+            interactionPromptPanel.SetActive(true);
+        }
+    }
+
+    public void HideInteractionPrompt()
+    {
+        if (interactionPromptPanel != null)
+        {
+            interactionPromptPanel.SetActive(false);
+        }
+    }
+
+    public void UpdateSandwichCount(int count)
+    {
+        if (sandwichCountText != null)
+        {
+            sandwichCountText.text = $"Sandwiches: {count}";
+        }
+    }
+
+    private IEnumerator FadeImage(Image image, float startAlpha, float endAlpha, float duration)
+    {
+        float elapsed = 0f;
+        Color color = image.color;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(startAlpha, endAlpha, elapsed / duration);
+            image.color = new Color(color.r, color.g, color.b, alpha);
+            yield return null;
+        }
+
+        image.color = new Color(color.r, color.g, color.b, endAlpha);
     }
 }

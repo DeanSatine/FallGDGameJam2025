@@ -7,10 +7,17 @@ public class LungerEnemy : Enemy
     [SerializeField] private float jumpDistance = 5f;
     [SerializeField] private float jumpForce = 10f;
     [SerializeField] private float jumpHeight = 5f;
+    [SerializeField] private float bounceForce = 8f;
+    [SerializeField] private float rotationSpeed = 360f;
 
     private Rigidbody rb;
-    private bool hasJumped = false;
-    private bool isJumping = false;
+    private bool isGrounded = false;
+    private float groundCheckDistance = 0.6f;
+    private Vector3 lastPosition;
+    private float stuckCheckTimer = 0f;
+    private float stuckCheckInterval = 1f;
+    private float minMovementThreshold = 0.1f;
+    private Vector3 randomRotationAxis;
 
     protected override void Start()
     {
@@ -22,56 +29,110 @@ public class LungerEnemy : Enemy
             rb = gameObject.AddComponent<Rigidbody>();
         }
 
+        rb.constraints = RigidbodyConstraints.None;
+        rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+
         damageToPlayer = 1;
         pointValue = 1;
+        lastPosition = transform.position;
+        
+        randomRotationAxis = new Vector3(
+            Random.Range(-1f, 1f),
+            Random.Range(-1f, 1f),
+            Random.Range(-1f, 1f)
+        ).normalized;
     }
 
     private void FixedUpdate()
     {
         if (isDead || playerTransform == null) return;
 
-        float distanceToPlayer = Vector3.Distance(transform.position, playerTransform.position);
+        CheckGrounded();
+        CheckIfStuck();
+        ApplyRotation();
 
-        if (!hasJumped && distanceToPlayer <= jumpDistance && !isJumping)
+        if (isGrounded)
         {
-            JumpTowardsPlayer();
-        }
-        else if (!hasJumped && !isJumping)
-        {
-            RollTowardsPlayer();
+            BounceTowardsPlayer();
         }
     }
 
-    private void RollTowardsPlayer()
+    private void ApplyRotation()
+    {
+        float velocityMagnitude = rb.linearVelocity.magnitude;
+        float rotationAmount = rotationSpeed * Time.fixedDeltaTime * (velocityMagnitude / bounceForce);
+        
+        transform.Rotate(randomRotationAxis, rotationAmount, Space.World);
+    }
+
+    private void CheckGrounded()
+    {
+        RaycastHit hit;
+        isGrounded = Physics.Raycast(transform.position, Vector3.down, out hit, groundCheckDistance);
+    }
+
+    private void CheckIfStuck()
+    {
+        stuckCheckTimer += Time.fixedDeltaTime;
+
+        if (stuckCheckTimer >= stuckCheckInterval)
+        {
+            float distanceMoved = Vector3.Distance(transform.position, lastPosition);
+
+            if (distanceMoved < minMovementThreshold)
+            {
+                Vector3 randomDirection = new Vector3(
+                    Random.Range(-1f, 1f),
+                    0,
+                    Random.Range(-1f, 1f)
+                ).normalized;
+
+                rb.linearVelocity = randomDirection * bounceForce + Vector3.up * jumpHeight;
+            }
+
+            lastPosition = transform.position;
+            stuckCheckTimer = 0f;
+        }
+    }
+
+    private void BounceTowardsPlayer()
     {
         Vector3 direction = (playerTransform.position - transform.position).normalized;
         direction.y = 0;
 
-        Vector3 rollVelocity = direction * rollSpeed;
-        rollVelocity.y = rb.linearVelocity.y;
-        rb.linearVelocity = rollVelocity;
+        Vector3 bounceVelocity = direction * bounceForce;
+        bounceVelocity.y = jumpHeight;
 
-        transform.Rotate(Vector3.right * rollSpeed * 100f * Time.fixedDeltaTime);
+        rb.linearVelocity = bounceVelocity;
+        
+        randomRotationAxis = new Vector3(
+            Random.Range(-1f, 1f),
+            Random.Range(-1f, 1f),
+            Random.Range(-1f, 1f)
+        ).normalized;
     }
 
-    private void JumpTowardsPlayer()
+    private void OnCollisionEnter(Collision collision)
     {
-        hasJumped = true;
-        isJumping = true;
+        if (collision.gameObject.CompareTag("Player"))
+        {
+            PlayerHealth playerHealth = collision.gameObject.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+            {
+                playerHealth.TakeDamage(damageToPlayer);
+            }
+        }
+        else if (collision.gameObject.layer == LayerMask.NameToLayer("Default") || 
+                 collision.gameObject.CompareTag("Wall"))
+        {
+            Vector3 wallNormal = collision.contacts[0].normal;
+            wallNormal.y = 0;
+            
+            Vector3 bounceDirection = Vector3.Reflect(rb.linearVelocity.normalized, wallNormal);
+            bounceDirection.y = 0;
+            bounceDirection.Normalize();
 
-        Vector3 direction = (playerTransform.position - transform.position).normalized;
-        direction.y = 0;
-
-        Vector3 jumpVelocity = direction * jumpForce;
-        jumpVelocity.y = jumpHeight;
-
-        rb.linearVelocity = jumpVelocity;
-
-        Invoke(nameof(ResetJump), 2f);
-    }
-
-    private void ResetJump()
-    {
-        isJumping = false;
+            rb.linearVelocity = bounceDirection * bounceForce + Vector3.up * jumpHeight * 0.5f;
+        }
     }
 }

@@ -5,87 +5,130 @@ public class EnemySpawner : MonoBehaviour
 {
     [Header("Enemy Prefabs")]
     [SerializeField] private GameObject lungerPrefab;
-    [SerializeField] private GameObject throwerPrefab;
 
     [Header("Spawn Settings")]
-    [SerializeField] private float lungerSpawnInterval = 2f;
-    [SerializeField] private float throwerSpawnInterval = 4f;
-    [SerializeField] private float spawnRadius = 15f;
-    [SerializeField] private Transform playerTransform;
+    [SerializeField] private float spawnInterval = 2f;
+    [SerializeField] private Transform spawnBounds;
+    [SerializeField] private float groundOffset = 0.5f;
+    [SerializeField] private bool debugMode = false;
 
     private bool isSpawning = false;
-    private int currentRound = 1;
-    private int enemiesToSpawn = 10;
+    private Bounds spawnArea;
+    private Coroutine spawnCoroutine;
+    private int totalSpawned = 0;
 
     private void Start()
     {
-        if (playerTransform == null)
+        if (spawnBounds != null)
         {
-            GameObject player = GameObject.FindGameObjectWithTag("Player");
-            if (player != null)
+            Collider boundsCollider = spawnBounds.GetComponent<Collider>();
+            if (boundsCollider != null)
             {
-                playerTransform = player.transform;
+                spawnArea = boundsCollider.bounds;
+            }
+            else
+            {
+                spawnArea = new Bounds(spawnBounds.position, spawnBounds.localScale);
             }
         }
     }
 
     public void StartSpawning(int round, int enemyCount)
     {
-        currentRound = round;
-        enemiesToSpawn = enemyCount;
-        isSpawning = true;
+        if (isSpawning)
+        {
+            if (debugMode) Debug.Log("EnemySpawner: Already spawning, stopping old coroutine first.");
+            StopSpawning();
+        }
 
-        StartCoroutine(SpawnLungers());
-        StartCoroutine(SpawnThrowers());
+        isSpawning = true;
+        totalSpawned = 0;
+
+        if (debugMode) Debug.Log($"EnemySpawner: Starting spawning for round {round}");
+
+        spawnCoroutine = StartCoroutine(SpawnEnemies());
     }
 
     public void StopSpawning()
     {
+        if (debugMode) Debug.Log($"EnemySpawner: Stopping spawning. Total spawned: {totalSpawned}");
+
         isSpawning = false;
-        StopAllCoroutines();
+
+        if (spawnCoroutine != null)
+        {
+            StopCoroutine(spawnCoroutine);
+            spawnCoroutine = null;
+        }
     }
 
-    private IEnumerator SpawnLungers()
+    private IEnumerator SpawnEnemies()
     {
-        while (isSpawning && enemiesToSpawn > 0)
-        {
-            yield return new WaitForSeconds(lungerSpawnInterval);
+        if (debugMode) Debug.Log("EnemySpawner: SpawnEnemies coroutine started");
 
-            if (lungerPrefab != null && enemiesToSpawn > 0)
+        while (isSpawning)
+        {
+            yield return new WaitForSeconds(spawnInterval);
+
+            if (!isSpawning)
+            {
+                if (debugMode) Debug.Log("EnemySpawner: isSpawning became false, exiting coroutine");
+                yield break;
+            }
+
+            if (lungerPrefab != null)
             {
                 SpawnEnemy(lungerPrefab);
-                enemiesToSpawn--;
             }
-        }
-    }
-
-    private IEnumerator SpawnThrowers()
-    {
-        while (isSpawning && enemiesToSpawn > 0)
-        {
-            yield return new WaitForSeconds(throwerSpawnInterval);
-
-            if (throwerPrefab != null && enemiesToSpawn > 0)
+            else
             {
-                SpawnEnemy(throwerPrefab);
-                enemiesToSpawn--;
+                if (debugMode) Debug.LogWarning("EnemySpawner: lungerPrefab is null!");
             }
         }
+
+        if (debugMode) Debug.Log("EnemySpawner: SpawnEnemies coroutine ended naturally");
     }
 
     private void SpawnEnemy(GameObject enemyPrefab)
     {
         Vector3 spawnPosition = GetRandomSpawnPosition();
-        Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+        GameObject spawnedEnemy = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+        totalSpawned++;
+
+        if (debugMode) Debug.Log($"EnemySpawner: Spawned enemy #{totalSpawned} at {spawnPosition}");
     }
 
     private Vector3 GetRandomSpawnPosition()
     {
-        if (playerTransform == null) return Vector3.zero;
+        if (spawnBounds == null)
+        {
+            if (debugMode) Debug.LogWarning("EnemySpawner: spawnBounds is null, using spawner position");
+            return transform.position;
+        }
 
-        Vector2 randomCircle = Random.insideUnitCircle.normalized * spawnRadius;
-        Vector3 spawnOffset = new Vector3(randomCircle.x, 0, randomCircle.y);
+        Vector3 randomPoint = new Vector3(
+            Random.Range(spawnArea.min.x, spawnArea.max.x),
+            spawnArea.center.y + groundOffset,
+            Random.Range(spawnArea.min.z, spawnArea.max.z)
+        );
 
-        return playerTransform.position + spawnOffset;
+        return randomPoint;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (spawnBounds != null)
+        {
+            Gizmos.color = Color.red;
+            Collider boundsCollider = spawnBounds.GetComponent<Collider>();
+            if (boundsCollider != null)
+            {
+                Gizmos.DrawWireCube(boundsCollider.bounds.center, boundsCollider.bounds.size);
+            }
+            else
+            {
+                Gizmos.DrawWireCube(spawnBounds.position, spawnBounds.localScale);
+            }
+        }
     }
 }

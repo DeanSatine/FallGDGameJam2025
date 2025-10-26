@@ -20,6 +20,8 @@ public class GameManager : MonoBehaviour
     [SerializeField] private EnemySpawner enemySpawner;
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private UIManager uiManager;
+    [SerializeField] private SkyboxTransition skyboxTransition;
+    [SerializeField] private RentStation rentStation;
 
     private bool isRoundActive = false;
     private bool isGameOver = false;
@@ -43,6 +45,16 @@ public class GameManager : MonoBehaviour
             uiManager = FindFirstObjectByType<UIManager>();
         }
 
+        if (skyboxTransition == null)
+        {
+            skyboxTransition = FindFirstObjectByType<SkyboxTransition>();
+        }
+
+        if (rentStation == null)
+        {
+            rentStation = FindFirstObjectByType<RentStation>();
+        }
+
         StartCoroutine(StartGameSequence());
     }
 
@@ -60,6 +72,11 @@ public class GameManager : MonoBehaviour
         enemiesToKillThisRound = baseEnemiesPerRound + (currentRound - 1) * enemyIncreasePerRound;
         enemiesKilledThisRound = 0;
         isRoundActive = true;
+
+        if (skyboxTransition != null)
+        {
+            skyboxTransition.OnRoundStart(currentRound);
+        }
 
         if (uiManager != null)
         {
@@ -109,6 +126,11 @@ public class GameManager : MonoBehaviour
         {
             uiManager.ShowDayEnd(currentRound, currentPoints, currentRentCost);
         }
+
+        if (rentStation != null)
+        {
+            rentStation.SetRentDue(true);
+        }
     }
 
     public void PayRent()
@@ -118,6 +140,20 @@ public class GameManager : MonoBehaviour
             currentPoints -= currentRentCost;
             currentRound++;
             UpdateUI();
+
+            if (uiManager != null && uiManager.gameObject.activeInHierarchy)
+            {
+                GameObject dayEndPanel = uiManager.transform.Find("DayEndPanel")?.gameObject;
+                if (dayEndPanel != null)
+                {
+                    dayEndPanel.SetActive(false);
+                }
+            }
+
+            if (rentStation != null)
+            {
+                rentStation.SetRentDue(false);
+            }
 
             StartCoroutine(StartNextRoundDelay());
         }
