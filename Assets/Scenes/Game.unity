@@ -1483,7 +1483,7 @@ MonoBehaviour:
   gameOverJingle: {fileID: 8300000, guid: ed19b85563a88604799dc457f07453ae, type: 3}
   jingleVolume: 0.7
   sfxSource: {fileID: 0}
-  enemyHitSound: {fileID: 0}
+  enemyHitSound: {fileID: 8300000, guid: 2b1848bbabc5f144c980b0f8627f35a9, type: 3}
   enemyKillSound: {fileID: 0}
   throwSound: {fileID: 0}
   createSandwichSound: {fileID: 0}
