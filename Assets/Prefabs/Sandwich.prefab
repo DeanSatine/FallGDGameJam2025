@@ -155,7 +155,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SandwichProjectile
   damage: 1
   explosionVFXPrefab: {fileID: 0}
-  explosionSound: {fileID: 0}
+  explosionSound: {fileID: 8300000, guid: 897463e3c994dc9449b4f72e07184fd7, type: 3}
   lifeTime: 5
   explosionVFXLifetime: 3
   explosionVolume: 1

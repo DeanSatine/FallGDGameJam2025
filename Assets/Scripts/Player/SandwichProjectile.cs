@@ -10,13 +10,18 @@ public class SandwichProjectile : MonoBehaviour
     [SerializeField] private float explosionVFXLifetime = 3f;
     [SerializeField] private float explosionVolume = 1f;
 
-    private void Start()
+    private bool hasBeenThrown = false;
+
+    public void OnThrown()
     {
+        hasBeenThrown = true;
         Destroy(gameObject, lifeTime);
     }
 
     private void OnCollisionEnter(Collision collision)
     {
+        if (!hasBeenThrown) return;
+
         Enemy enemy = collision.gameObject.GetComponent<Enemy>();
         if (enemy != null)
         {

@@ -16,6 +16,10 @@ public class GameManager : MonoBehaviour
     [SerializeField] private int enemyIncreasePerRound = 2;
     [SerializeField] private int healthRestorePerRound = 3;
 
+    [Header("Death Settings")]
+    [SerializeField] private float deathFadeDelay = 1f;
+    [SerializeField] private string menuSceneName = "Menu";
+
     [Header("References")]
     [SerializeField] private EnemySpawner enemySpawner;
     [SerializeField] private PlayerHealth playerHealth;
@@ -93,8 +97,6 @@ public class GameManager : MonoBehaviour
 
     public void OnEnemyKilled(int pointValue)
     {
-        Debug.Log($"GameManager: Enemy killed! Adding {pointValue} points. Current points: {currentPoints}");
-        
         currentPoints += pointValue;
 
         if (isRoundActive)
@@ -118,6 +120,8 @@ public class GameManager : MonoBehaviour
         {
             enemySpawner.StopSpawning();
         }
+
+        ClearRemainingEnemies();
 
         if (playerHealth != null)
         {
@@ -173,7 +177,27 @@ public class GameManager : MonoBehaviour
 
     public void OnPlayerDeath()
     {
-        GameOver(true);
+        StartCoroutine(DeathSequence());
+    }
+
+    private IEnumerator DeathSequence()
+    {
+        isGameOver = true;
+        isRoundActive = false;
+
+        if (enemySpawner != null)
+        {
+            enemySpawner.StopSpawning();
+        }
+
+        yield return new WaitForSeconds(deathFadeDelay);
+
+        Time.timeScale = 0f;
+
+        if (uiManager != null)
+        {
+            uiManager.ShowDeathFade(currentRound, currentPoints, menuSceneName);
+        }
     }
 
     private void GameOver(bool fromDeath)
@@ -186,10 +210,27 @@ public class GameManager : MonoBehaviour
             enemySpawner.StopSpawning();
         }
 
+        ClearRemainingEnemies();
+
         if (uiManager != null)
         {
             string reason = fromDeath ? "Health reached 0!" : "Could not pay rent!";
             uiManager.ShowGameOver(currentRound, currentPoints, reason);
+        }
+    }
+
+    private void ClearRemainingEnemies()
+    {
+        Enemy[] enemies = FindObjectsByType<Enemy>(FindObjectsSortMode.None);
+        foreach (Enemy enemy in enemies)
+        {
+            Destroy(enemy.gameObject);
+        }
+
+        EnemyProjectile[] projectiles = FindObjectsByType<EnemyProjectile>(FindObjectsSortMode.None);
+        foreach (EnemyProjectile projectile in projectiles)
+        {
+            Destroy(projectile.gameObject);
         }
     }
 
@@ -203,6 +244,7 @@ public class GameManager : MonoBehaviour
 
     public void RestartGame()
     {
+        Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 

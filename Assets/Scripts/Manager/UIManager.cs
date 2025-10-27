@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using System.Collections;
+using UnityEngine.SceneManagement;
 
 public class UIManager : MonoBehaviour
 {
@@ -18,7 +19,6 @@ public class UIManager : MonoBehaviour
 
     [Header("Day Panels")]
     [SerializeField] private GameObject dayStartPanel;
-    [SerializeField] private TextMeshProUGUI dayStartText;
     [SerializeField] private Image dayStartFadeImage;
     [SerializeField] private GameObject dayEndPanel;
     [SerializeField] private TextMeshProUGUI dayEndText;
@@ -31,6 +31,11 @@ public class UIManager : MonoBehaviour
     [Header("Game Over Panel")]
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TextMeshProUGUI gameOverText;
+
+    [Header("Death Fade")]
+    [SerializeField] private Image deathImage;
+    [SerializeField] private float deathSequenceDuration = 5f;
+    [SerializeField] private float deathFadeDuration = 1.5f;
 
     private GameManager gameManager;
     private PlayerHealth playerHealth;
@@ -51,8 +56,24 @@ public class UIManager : MonoBehaviour
         if (gameOverPanel != null) gameOverPanel.SetActive(false);
         if (interactionPromptPanel != null) interactionPromptPanel.SetActive(false);
 
-        if (dayStartFadeImage != null) dayStartFadeImage.color = new Color(0, 0, 0, 0);
-        if (dayEndFadeImage != null) dayEndFadeImage.color = new Color(0, 0, 0, 0);
+        if (dayStartFadeImage != null)
+        {
+            Color c = dayStartFadeImage.color;
+            dayStartFadeImage.color = new Color(c.r, c.g, c.b, 0);
+        }
+
+        if (dayEndFadeImage != null)
+        {
+            Color c = dayEndFadeImage.color;
+            dayEndFadeImage.color = new Color(c.r, c.g, c.b, 0);
+        }
+
+        if (deathImage != null)
+        {
+            Color c = deathImage.color;
+            deathImage.color = new Color(c.r, c.g, c.b, 0);
+            deathImage.gameObject.SetActive(false);
+        }
     }
 
     private void UpdateHealthDisplay(int health)
@@ -88,11 +109,7 @@ public class UIManager : MonoBehaviour
 
     public void ShowDayStart(int day)
     {
-        if (dayStartPanel != null && dayStartText != null)
-        {
-            dayStartText.text = $"Day {day}";
-            StartCoroutine(ShowDayStartWithFade(day));
-        }
+        StartCoroutine(ShowDayStartWithFade(day));
 
         if (AudioManager.Instance != null)
         {
@@ -107,17 +124,7 @@ public class UIManager : MonoBehaviour
             yield return StartCoroutine(FadeImage(dayStartFadeImage, 0f, 1f, fadeDuration));
         }
 
-        if (dayStartPanel != null)
-        {
-            dayStartPanel.SetActive(true);
-        }
-
-        yield return new WaitForSeconds(2f);
-
-        if (dayStartPanel != null)
-        {
-            dayStartPanel.SetActive(false);
-        }
+        yield return new WaitForSeconds(1.5f);
 
         if (dayStartFadeImage != null)
         {
@@ -162,6 +169,31 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    public void ShowDeathFade(int finalRound, int finalPoints, string menuSceneName)
+    {
+        StartCoroutine(DeathFadeSequence(menuSceneName));
+    }
+
+    private IEnumerator DeathFadeSequence(string menuSceneName)
+    {
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayGameOverJingle();
+        }
+
+        if (deathImage != null)
+        {
+            deathImage.gameObject.SetActive(true);
+            yield return StartCoroutine(FadeImageUnscaled(deathImage, 0f, 1f, deathFadeDuration));
+        }
+
+        float remainingTime = deathSequenceDuration - deathFadeDuration;
+        yield return new WaitForSecondsRealtime(remainingTime);
+
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(menuSceneName);
+    }
+
     public void OnRestartButtonClicked()
     {
         if (gameManager != null)
@@ -203,6 +235,22 @@ public class UIManager : MonoBehaviour
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(startAlpha, endAlpha, elapsed / duration);
+            image.color = new Color(color.r, color.g, color.b, alpha);
+            yield return null;
+        }
+
+        image.color = new Color(color.r, color.g, color.b, endAlpha);
+    }
+
+    private IEnumerator FadeImageUnscaled(Image image, float startAlpha, float endAlpha, float duration)
+    {
+        float elapsed = 0f;
+        Color color = image.color;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
             float alpha = Mathf.Lerp(startAlpha, endAlpha, elapsed / duration);
             image.color = new Color(color.r, color.g, color.b, alpha);
             yield return null;

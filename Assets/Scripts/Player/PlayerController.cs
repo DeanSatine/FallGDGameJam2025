@@ -11,10 +11,17 @@ public class PlayerController : MonoBehaviour
 
     [Header("Head Bob Settings")]
     [SerializeField] private bool enableHeadBob = true;
-    [SerializeField] private float bobFrequency = 2f;
-    [SerializeField] private float bobHorizontalAmplitude = 0.05f;
-    [SerializeField] private float bobVerticalAmplitude = 0.08f;
+    [SerializeField] private float bobFrequency = 2.5f;
+    [SerializeField] private float bobHorizontalAmplitude = 0.08f;
+    [SerializeField] private float bobVerticalAmplitude = 0.12f;
     [SerializeField] private float bobSmoothing = 10f;
+
+    [Header("Hand Animation Settings")]
+    [SerializeField] private bool enableHandAnimation = true;
+    [SerializeField] private float handBobMultiplier = 1.5f;
+    [SerializeField] private float throwAnimationDuration = 0.2f;
+    [SerializeField] private float throwUpAmount = 0.3f;
+    [SerializeField] private AnimationCurve throwCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
     [Header("Sandwich Settings")]
     [SerializeField] private GameObject sandwichPrefab;
@@ -62,9 +69,11 @@ public class PlayerController : MonoBehaviour
     private float verticalRotation = 0f;
     private bool isCreatingSandwich = false;
     private bool isAiming = false;
+    private bool isThrowAnimating = false;
 
     private float bobTimer = 0f;
     private Vector3 cameraStartPosition;
+    private Vector3 holdPointStartPosition;
     private float footstepTimer = 0f;
     private int lastFootstepIndex = -1;
 
@@ -108,6 +117,11 @@ public class PlayerController : MonoBehaviour
             cameraStartPosition = cameraTransform.localPosition;
         }
 
+        if (holdPoint != null)
+        {
+            holdPointStartPosition = holdPoint.localPosition;
+        }
+
         uiManager = FindFirstObjectByType<UIManager>();
 
         Cursor.lockState = CursorLockMode.Locked;
@@ -142,6 +156,7 @@ public class PlayerController : MonoBehaviour
     {
         HandleMouseLook();
         HandleHeadBob();
+        HandleHandBob();
         HandleFootstepSounds();
         CheckForInteractable();
         HandleAimZoom();
@@ -230,6 +245,27 @@ public class PlayerController : MonoBehaviour
         {
             bobTimer = 0f;
             cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, cameraStartPosition, bobSmoothing * Time.deltaTime);
+        }
+    }
+
+    private void HandleHandBob()
+    {
+        if (!enableHandAnimation || holdPoint == null || isThrowAnimating)
+            return;
+
+        bool isMoving = moveInput.magnitude > 0.1f;
+
+        if (isMoving)
+        {
+            float handHorizontalOffset = Mathf.Sin(bobTimer) * bobHorizontalAmplitude * handBobMultiplier;
+            float handVerticalOffset = Mathf.Abs(Mathf.Cos(bobTimer * 2f)) * bobVerticalAmplitude * handBobMultiplier;
+
+            Vector3 targetPosition = holdPointStartPosition + new Vector3(handHorizontalOffset, handVerticalOffset, 0f);
+            holdPoint.localPosition = Vector3.Lerp(holdPoint.localPosition, targetPosition, bobSmoothing * Time.deltaTime);
+        }
+        else
+        {
+            holdPoint.localPosition = Vector3.Lerp(holdPoint.localPosition, holdPointStartPosition, bobSmoothing * Time.deltaTime);
         }
     }
 
@@ -393,6 +429,8 @@ public class PlayerController : MonoBehaviour
     {
         if (currentSandwiches <= 0) return;
 
+        StartCoroutine(ThrowAnimation());
+
         Vector3 throwPosition = heldSandwich.transform.position;
 
         GameObject thrownSandwich = heldSandwich;
@@ -418,6 +456,7 @@ public class PlayerController : MonoBehaviour
         }
         projectile.damage = sandwichDamage;
         projectile.explosionVFXPrefab = explosionVFXPrefab;
+        projectile.OnThrown();
 
         if (throwVFXPrefab != null)
         {
@@ -437,7 +476,7 @@ public class PlayerController : MonoBehaviour
         }
 
         currentSandwiches--;
-        
+
         if (uiManager != null)
         {
             uiManager.UpdateSandwichCount(currentSandwiches);
@@ -453,10 +492,33 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    private System.Collections.IEnumerator ThrowAnimation()
+    {
+        if (holdPoint == null || !enableHandAnimation) yield break;
+
+        isThrowAnimating = true;
+        float elapsed = 0f;
+
+        while (elapsed < throwAnimationDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / throwAnimationDuration;
+            float curveValue = throwCurve.Evaluate(t);
+
+            float upOffset = Mathf.Sin(curveValue * Mathf.PI) * throwUpAmount;
+            holdPoint.localPosition = holdPointStartPosition + new Vector3(0, upOffset, 0);
+
+            yield return null;
+        }
+
+        holdPoint.localPosition = holdPointStartPosition;
+        isThrowAnimating = false;
+    }
+
     public void AddSandwiches(int amount)
     {
         currentSandwiches += amount;
-        
+
         if (uiManager != null)
         {
             uiManager.UpdateSandwichCount(currentSandwiches);

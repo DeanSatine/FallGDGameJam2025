@@ -23,7 +23,6 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float fovChangeSpeed = 5f;
 
     private Vector3 originalPosition;
-    private Quaternion originalRotation;
     private float shakeTimer = 0f;
     private float recoilRotation = 0f;
     private float targetFOV;
@@ -52,7 +51,6 @@ public class CameraController : MonoBehaviour
         }
 
         originalPosition = transform.localPosition;
-        originalRotation = transform.localRotation;
     }
 
     private void LateUpdate()
@@ -130,8 +128,11 @@ public class CameraController : MonoBehaviour
         {
             recoilRotation = Mathf.Lerp(recoilRotation, 0f, recoilSpeed * Time.deltaTime);
 
-            Quaternion recoilQuaternion = Quaternion.Euler(-recoilRotation * recoilAmount, 0f, 0f);
-            transform.localRotation = originalRotation * recoilQuaternion;
+            float currentXRotation = transform.localEulerAngles.x;
+            if (currentXRotation > 180f) currentXRotation -= 360f;
+
+            float newXRotation = currentXRotation - (recoilRotation * recoilAmount);
+            transform.localRotation = Quaternion.Euler(newXRotation, 0f, 0f);
         }
     }
 
@@ -160,6 +161,5 @@ public class CameraController : MonoBehaviour
     public void UpdateOriginalTransform()
     {
         originalPosition = transform.localPosition;
-        originalRotation = transform.localRotation;
     }
 }

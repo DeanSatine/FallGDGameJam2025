@@ -164,6 +164,12 @@ MonoBehaviour:
   jumpHeight: 5
   bounceForce: 8
   rotationSpeed: 360
+  voiceLines: []
+  voiceLineInterval: 2
+  voiceLineVolume: 0.2
+  randomizePitch: 1
+  minPitch: 0.5
+  maxPitch: 2
 --- !u!1001 &7607908410565254109
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -228,6 +234,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: LittleDancev1
       objectReference: {fileID: 0}
+    - target: {fileID: 1972345337906886563, guid: 7fd9b27e1b0cdfd4bb6128cde757edd7, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 7ef8aedfb8c6ee846b7767c04f94f39e, type: 2}
     - target: {fileID: 5866666021909216657, guid: 7fd9b27e1b0cdfd4bb6128cde757edd7, type: 3}
       propertyPath: m_Controller
       value: 
