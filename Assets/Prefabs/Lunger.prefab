@@ -164,7 +164,13 @@ MonoBehaviour:
   jumpHeight: 5
   bounceForce: 8
   rotationSpeed: 360
-  voiceLines: []
+  voiceLines:
+  - {fileID: 8300000, guid: bb20e9680a18b474c902bb8926832513, type: 3}
+  - {fileID: 8300000, guid: 28318295784669e4f9c40f21088a5739, type: 3}
+  - {fileID: 8300000, guid: c1d1196dec6e2204a8b32b4f1e8f661a, type: 3}
+  - {fileID: 8300000, guid: 30e76a1249b670f4c8a67f27d01467ee, type: 3}
+  - {fileID: 8300000, guid: a50b7ff07432a024681d8d6438d96749, type: 3}
+  - {fileID: 8300000, guid: d72ce4c723ae94d4f833cfe68b411046, type: 3}
   voiceLineInterval: 2
   voiceLineVolume: 0.2
   randomizePitch: 1
