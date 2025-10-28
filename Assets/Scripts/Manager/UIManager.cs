@@ -37,13 +37,80 @@ public class UIManager : MonoBehaviour
     [SerializeField] private float deathSequenceDuration = 5f;
     [SerializeField] private float deathFadeDuration = 1.5f;
 
+    [Header("Health Text Effects")]
+    [SerializeField] private Color healthNormalColor = Color.green;
+    [SerializeField] private Color healthDamageColor = Color.red;
+    [SerializeField] private float healthFlashDuration = 0.3f;
+    [SerializeField] private float healthShakeDuration = 0.3f;
+    [SerializeField] private float healthShakeMagnitude = 5f;
+
+    [Header("Sandwich Text Effects")]
+    [SerializeField] private float sandwichBounceDuration = 0.4f;
+    [SerializeField] private float sandwichBounceScale = 1.3f;
+
+    [Header("Points Text Effects")]
+    [SerializeField] private float pointsBounceDuration = 0.4f;
+    [SerializeField] private float pointsBounceScale = 1.3f;
+
+    [Header("Round Text Effects")]
+    [SerializeField] private float roundBounceDuration = 0.5f;
+    [SerializeField] private float roundBounceScale = 1.4f;
+
+    [Header("Enemies Text Effects")]
+    [SerializeField] private Color enemiesNormalColor = Color.white;
+    [SerializeField] private Color enemiesCompleteColor = Color.yellow;
+    [SerializeField] private float enemiesDanceDuration = 1.5f;
+    [SerializeField] private float enemiesDanceScale = 1.2f;
+    [SerializeField] private float enemiesDanceSpeed = 5f;
+
     private GameManager gameManager;
     private PlayerHealth playerHealth;
+    private Vector3 healthTextOriginalPosition;
+    private Vector3 sandwichTextOriginalScale;
+    private Vector3 pointsTextOriginalScale;
+    private Vector3 roundTextOriginalScale;
+    private Vector3 enemiesTextOriginalScale;
+    private Coroutine healthFlashCoroutine;
+    private Coroutine healthShakeCoroutine;
+    private Coroutine sandwichBounceCoroutine;
+    private Coroutine pointsBounceCoroutine;
+    private Coroutine roundBounceCoroutine;
+    private Coroutine enemiesDanceCoroutine;
+
+    private int lastPoints = 0;
+    private int lastRound = 0;
 
     private void Start()
     {
         gameManager = FindFirstObjectByType<GameManager>();
         playerHealth = FindFirstObjectByType<PlayerHealth>();
+
+        if (healthText != null)
+        {
+            healthText.color = healthNormalColor;
+            healthTextOriginalPosition = healthText.rectTransform.localPosition;
+        }
+
+        if (sandwichCountText != null)
+        {
+            sandwichTextOriginalScale = sandwichCountText.rectTransform.localScale;
+        }
+
+        if (pointsText != null)
+        {
+            pointsTextOriginalScale = pointsText.rectTransform.localScale;
+        }
+
+        if (roundText != null)
+        {
+            roundTextOriginalScale = roundText.rectTransform.localScale;
+        }
+
+        if (enemiesText != null)
+        {
+            enemiesTextOriginalScale = enemiesText.rectTransform.localScale;
+            enemiesText.color = enemiesNormalColor;
+        }
 
         if (playerHealth != null)
         {
@@ -81,30 +148,203 @@ public class UIManager : MonoBehaviour
         if (healthText != null)
         {
             healthText.text = $"Health: {health}";
+
+            if (healthFlashCoroutine != null)
+            {
+                StopCoroutine(healthFlashCoroutine);
+            }
+            healthFlashCoroutine = StartCoroutine(FlashHealthText());
+
+            if (healthShakeCoroutine != null)
+            {
+                StopCoroutine(healthShakeCoroutine);
+            }
+            healthShakeCoroutine = StartCoroutine(ShakeHealthText());
         }
+    }
+
+    private IEnumerator FlashHealthText()
+    {
+        if (healthText == null) yield break;
+
+        healthText.color = healthDamageColor;
+
+        float elapsed = 0f;
+        while (elapsed < healthFlashDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / healthFlashDuration;
+            healthText.color = Color.Lerp(healthDamageColor, healthNormalColor, t);
+            yield return null;
+        }
+
+        healthText.color = healthNormalColor;
+    }
+
+    private IEnumerator ShakeHealthText()
+    {
+        if (healthText == null) yield break;
+
+        float elapsed = 0f;
+        while (elapsed < healthShakeDuration)
+        {
+            elapsed += Time.deltaTime;
+
+            float offsetX = Random.Range(-healthShakeMagnitude, healthShakeMagnitude);
+            float offsetY = Random.Range(-healthShakeMagnitude, healthShakeMagnitude);
+
+            healthText.rectTransform.localPosition = healthTextOriginalPosition + new Vector3(offsetX, offsetY, 0f);
+
+            yield return null;
+        }
+
+        healthText.rectTransform.localPosition = healthTextOriginalPosition;
     }
 
     public void UpdateGameStats(int points, int round, int enemiesKilled, int enemiesToKill)
     {
         if (pointsText != null)
         {
-            pointsText.text = $"Points: {points}";
+            pointsText.text = $"Money: ${points}";
+
+            if (points != lastPoints)
+            {
+                lastPoints = points;
+                if (pointsBounceCoroutine != null)
+                {
+                    StopCoroutine(pointsBounceCoroutine);
+                }
+                pointsBounceCoroutine = StartCoroutine(BouncePointsText());
+            }
         }
 
         if (roundText != null)
         {
             roundText.text = $"Day: {round}";
+
+            if (round != lastRound)
+            {
+                lastRound = round;
+                if (roundBounceCoroutine != null)
+                {
+                    StopCoroutine(roundBounceCoroutine);
+                }
+                roundBounceCoroutine = StartCoroutine(BounceRoundText());
+            }
         }
 
         if (enemiesText != null)
         {
             enemiesText.text = $"Enemies: {enemiesKilled}/{enemiesToKill}";
+
+            if (enemiesKilled >= enemiesToKill)
+            {
+                if (enemiesDanceCoroutine != null)
+                {
+                    StopCoroutine(enemiesDanceCoroutine);
+                }
+                enemiesDanceCoroutine = StartCoroutine(DanceEnemiesText());
+            }
+            else
+            {
+                if (enemiesDanceCoroutine != null)
+                {
+                    StopCoroutine(enemiesDanceCoroutine);
+                    enemiesDanceCoroutine = null;
+                }
+                enemiesText.color = enemiesNormalColor;
+                enemiesText.rectTransform.localScale = enemiesTextOriginalScale;
+            }
         }
 
         if (healthText != null && playerHealth != null)
         {
             healthText.text = $"Health: {playerHealth.GetCurrentHealth()}";
         }
+    }
+
+    private IEnumerator BouncePointsText()
+    {
+        if (pointsText == null) yield break;
+
+        float elapsed = 0f;
+        float halfDuration = pointsBounceDuration * 0.5f;
+
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            float scale = Mathf.Lerp(1f, pointsBounceScale, t);
+            pointsText.rectTransform.localScale = pointsTextOriginalScale * scale;
+            yield return null;
+        }
+
+        elapsed = 0f;
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            float scale = Mathf.Lerp(pointsBounceScale, 1f, t);
+            pointsText.rectTransform.localScale = pointsTextOriginalScale * scale;
+            yield return null;
+        }
+
+        pointsText.rectTransform.localScale = pointsTextOriginalScale;
+        pointsBounceCoroutine = null;
+    }
+
+    private IEnumerator BounceRoundText()
+    {
+        if (roundText == null) yield break;
+
+        float elapsed = 0f;
+        float halfDuration = roundBounceDuration * 0.5f;
+
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            float scale = Mathf.Lerp(1f, roundBounceScale, t);
+            roundText.rectTransform.localScale = roundTextOriginalScale * scale;
+            yield return null;
+        }
+
+        elapsed = 0f;
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            float scale = Mathf.Lerp(roundBounceScale, 1f, t);
+            roundText.rectTransform.localScale = roundTextOriginalScale * scale;
+            yield return null;
+        }
+
+        roundText.rectTransform.localScale = roundTextOriginalScale;
+        roundBounceCoroutine = null;
+    }
+
+    private IEnumerator DanceEnemiesText()
+    {
+        if (enemiesText == null) yield break;
+
+        float elapsed = 0f;
+        while (elapsed < enemiesDanceDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / enemiesDanceDuration;
+
+            float pulseScale = 1f + Mathf.Sin(Time.time * enemiesDanceSpeed) * (enemiesDanceScale - 1f);
+            enemiesText.rectTransform.localScale = enemiesTextOriginalScale * pulseScale;
+
+            float colorT = (Mathf.Sin(Time.time * enemiesDanceSpeed * 2f) + 1f) * 0.5f;
+            enemiesText.color = Color.Lerp(enemiesNormalColor, enemiesCompleteColor, colorT);
+
+            yield return null;
+        }
+
+        enemiesText.rectTransform.localScale = enemiesTextOriginalScale;
+        enemiesText.color = enemiesCompleteColor;
+        enemiesDanceCoroutine = null;
     }
 
     public void ShowDayStart(int day)
@@ -224,7 +464,43 @@ public class UIManager : MonoBehaviour
         if (sandwichCountText != null)
         {
             sandwichCountText.text = $"Sandwiches: {count}";
+
+            if (sandwichBounceCoroutine != null)
+            {
+                StopCoroutine(sandwichBounceCoroutine);
+            }
+            sandwichBounceCoroutine = StartCoroutine(BounceSandwichText());
         }
+    }
+
+    private IEnumerator BounceSandwichText()
+    {
+        if (sandwichCountText == null) yield break;
+
+        float elapsed = 0f;
+        float halfDuration = sandwichBounceDuration * 0.5f;
+
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            float scale = Mathf.Lerp(1f, sandwichBounceScale, t);
+            sandwichCountText.rectTransform.localScale = sandwichTextOriginalScale * scale;
+            yield return null;
+        }
+
+        elapsed = 0f;
+        while (elapsed < halfDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / halfDuration;
+            float scale = Mathf.Lerp(sandwichBounceScale, 1f, t);
+            sandwichCountText.rectTransform.localScale = sandwichTextOriginalScale * scale;
+            yield return null;
+        }
+
+        sandwichCountText.rectTransform.localScale = sandwichTextOriginalScale;
+        sandwichBounceCoroutine = null;
     }
 
     private IEnumerator FadeImage(Image image, float startAlpha, float endAlpha, float duration)

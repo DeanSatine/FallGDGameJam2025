@@ -46,13 +46,18 @@ public class PlayerHealth : MonoBehaviour
     public void TakeDamage(int damage)
     {
         Debug.Log($"PlayerHealth: Taking {damage} damage. Current health: {currentHealth}");
-        
+
         currentHealth -= damage;
         currentHealth = Mathf.Max(currentHealth, 0);
 
         Debug.Log($"PlayerHealth: New health: {currentHealth}");
-        
+
         OnHealthChanged?.Invoke(currentHealth);
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayPlayerHitSound();
+        }
 
         if (cameraController != null)
         {
@@ -74,6 +79,7 @@ public class PlayerHealth : MonoBehaviour
             Die();
         }
     }
+
 
     private IEnumerator FlashDamage()
     {

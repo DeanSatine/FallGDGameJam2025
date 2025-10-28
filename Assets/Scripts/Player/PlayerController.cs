@@ -33,7 +33,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private int maxSandwiches = 999;
 
     [Header("Aim Settings")]
-    [SerializeField] private float normalFOV = 60f;
+    [SerializeField] private float normalFOV = 90f;
     [SerializeField] private float aimFOV = 40f;
     [SerializeField] private float aimSpeed = 10f;
 

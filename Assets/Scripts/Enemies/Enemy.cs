@@ -25,6 +25,11 @@ public abstract class Enemy : MonoBehaviour
 
         healthPoints -= damage;
 
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayEnemyHitSound();
+        }
+
         if (healthPoints <= 0)
         {
             Die();
@@ -35,6 +40,11 @@ public abstract class Enemy : MonoBehaviour
     {
         isDead = true;
 
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayEnemyKillSound();
+        }
+
         GameManager gameManager = FindFirstObjectByType<GameManager>();
         if (gameManager != null)
         {
@@ -43,6 +53,7 @@ public abstract class Enemy : MonoBehaviour
 
         Destroy(gameObject);
     }
+
 
     protected virtual void OnCollisionEnter(Collision collision)
     {

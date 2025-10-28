@@ -2,6 +2,7 @@
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -15,6 +16,9 @@ public class PauseMenuManager : MonoBehaviour
     public Button resumeButton;
     public Button mainMenuButton;
     public Button quitButton;
+
+    [Header("Scene Settings")]
+    [SerializeField] private string menuSceneName = "Menu";
 
     [Header("Audio (Optional)")]
     public AudioSource uiAudioSource;
@@ -49,16 +53,13 @@ public class PauseMenuManager : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Escape))
+        if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
         {
             if (isPaused) ResumeGame();
             else PauseGame();
         }
     }
 
-    // -------------------------------------------------
-    // 🔹 GAME PAUSE / RESUME
-    // -------------------------------------------------
     public void PauseGame()
     {
         if (isFading) return;
@@ -87,18 +88,18 @@ public class PauseMenuManager : MonoBehaviour
     {
         PlayClickSound();
         Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
+        SceneManager.LoadScene(menuSceneName);
     }
 
     public void QuitGame()
     {
         PlayClickSound();
         Application.Quit();
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#endif
     }
 
-    // -------------------------------------------------
-    // 🔹 MENU FADE LOGIC
-    // -------------------------------------------------
     private IEnumerator FadeMenu(float targetAlpha, bool show, System.Action onComplete = null)
     {
         isFading = true;
@@ -138,9 +139,6 @@ public class PauseMenuManager : MonoBehaviour
         onComplete?.Invoke();
     }
 
-    // -------------------------------------------------
-    // 🔹 BUTTON SETUP
-    // -------------------------------------------------
     private void SetupButton(Button button, UnityEngine.Events.UnityAction onClickAction)
     {
         if (button == null) return;
@@ -163,13 +161,11 @@ public class PauseMenuManager : MonoBehaviour
         if (trigger == null)
             trigger = button.gameObject.AddComponent<EventTrigger>();
 
-        // Pointer Enter
         EventTrigger.Entry entryEnter = new EventTrigger.Entry();
         entryEnter.eventID = EventTriggerType.PointerEnter;
         entryEnter.callback.AddListener((_) => StartCoroutine(AnimateButtonHover(button, true)));
         trigger.triggers.Add(entryEnter);
 
-        // Pointer Exit
         EventTrigger.Entry entryExit = new EventTrigger.Entry();
         entryExit.eventID = EventTriggerType.PointerExit;
         entryExit.callback.AddListener((_) => StartCoroutine(AnimateButtonHover(button, false)));
@@ -204,9 +200,6 @@ public class PauseMenuManager : MonoBehaviour
         button.image.color = targetColor;
     }
 
-    // -------------------------------------------------
-    // 🔹 AUDIO HELPERS
-    // -------------------------------------------------
     private void PlayClickSound()
     {
         if (uiAudioSource && clickSound)

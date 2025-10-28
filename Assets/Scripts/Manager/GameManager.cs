@@ -87,6 +87,11 @@ public class GameManager : MonoBehaviour
             uiManager.ShowDayStart(currentRound);
         }
 
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StartNarrationForDay(currentRound);
+        }
+
         if (enemySpawner != null)
         {
             enemySpawner.StartSpawning(currentRound, enemiesToKillThisRound);
@@ -115,6 +120,11 @@ public class GameManager : MonoBehaviour
     private void EndRound()
     {
         isRoundActive = false;
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopNarration();
+        }
 
         if (enemySpawner != null)
         {
@@ -185,6 +195,11 @@ public class GameManager : MonoBehaviour
         isGameOver = true;
         isRoundActive = false;
 
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopNarration();
+        }
+
         if (enemySpawner != null)
         {
             enemySpawner.StopSpawning();
@@ -204,6 +219,11 @@ public class GameManager : MonoBehaviour
     {
         isGameOver = true;
         isRoundActive = false;
+
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.StopNarration();
+        }
 
         if (enemySpawner != null)
         {
